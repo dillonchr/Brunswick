@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		512EF22A2138DA4000990618 /* Logger.m in Sources */ = {isa = PBXBuildFile; fileRef = 512EF2292138DA4000990618 /* Logger.m */; };
 		518C57E72138CA7400BDA33B /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 518C57E62138CA7400BDA33B /* main.m */; };
 /* End PBXBuildFile section */
 
@@ -25,6 +26,8 @@
 /* Begin PBXFileReference section */
 		51277CCD2138CAF200B01925 /* Brunswick.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; path = Brunswick.1; sourceTree = "<group>"; };
 		51277CCE2138CAF200B01925 /* Brunswick-Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Brunswick-Prefix.pch"; sourceTree = "<group>"; };
+		512EF2282138DA4000990618 /* Logger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
+		512EF2292138DA4000990618 /* Logger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Logger.m; sourceTree = "<group>"; };
 		518C57E32138CA7400BDA33B /* Brunswick */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Brunswick; sourceTree = BUILT_PRODUCTS_DIR; };
 		518C57E62138CA7400BDA33B /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -62,6 +65,8 @@
 				51277CCE2138CAF200B01925 /* Brunswick-Prefix.pch */,
 				51277CCD2138CAF200B01925 /* Brunswick.1 */,
 				518C57E62138CA7400BDA33B /* main.m */,
+				512EF2282138DA4000990618 /* Logger.h */,
+				512EF2292138DA4000990618 /* Logger.m */,
 			);
 			path = Brunswick;
 			sourceTree = "<group>";
@@ -123,6 +128,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				518C57E72138CA7400BDA33B /* main.m in Sources */,
+				512EF22A2138DA4000990618 /* Logger.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

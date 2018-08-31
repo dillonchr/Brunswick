@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "Logger.h"
 #define MAX_CONCURRENT_CONVERSIONS 2
 static NSString *inputDir;
 static NSString *outputDir;
@@ -14,52 +15,48 @@ void scanForMovies(NSDirectoryEnumerator *files);
 static NSMutableArray *movies;
 void deleteSourceMovie(NSString *sourcePath);
 void moveToPepper(NSString *sourcePath);
-static NSFileHandle *logFile;
 void writeToLog(NSString *message);
 static int currentMovieIndex;
 static int concurrentCount;
-static BOOL writingToLog;
 void processMovieInBackground(void);
+static Logger *logger;
+NSString *getInputPath(NSString *pathArg);
+NSString *getOutputPath(NSString *pathArg);
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
-        BOOL isArgADir;
-        if (argc > 1 && [[NSFileManager defaultManager] fileExistsAtPath:@(argv[1]) isDirectory:&isArgADir] && isArgADir) {
-            inputDir = @(argv[1]);
-        } else {
-            inputDir = [@"~/Desktop/test/" stringByExpandingTildeInPath];
-        }
-        
-        if (argc > 2 && [[NSFileManager defaultManager] fileExistsAtPath:@(argv[2]) isDirectory:&isArgADir] && isArgADir) {
-            outputDir = @(argv[2]);
-        } else {
-            outputDir = [@"~/Downloads/" stringByExpandingTildeInPath];
-        }
-        
-        NSString *logPath = [@"~/Desktop/handbrake.log" stringByExpandingTildeInPath];
-        if (![[NSFileManager defaultManager] fileExistsAtPath:logPath]) {
-            [[NSFileManager defaultManager] createFileAtPath:logPath contents:nil attributes:nil];
-        }
-        
-        logFile = [NSFileHandle fileHandleForWritingAtPath:logPath];
-        [logFile seekToEndOfFile];
-        
+        inputDir = getInputPath(@(argv[0]));
+        outputDir = getOutputPath(@(argv[1]));
         writeToLog([NSString stringWithFormat:@"Scanning `%@`", inputDir]);
         writeToLog([NSString stringWithFormat:@"Dumping to `%@`", outputDir]);
         
         NSURL *inputDirURL = [NSURL fileURLWithPath:inputDir];
-        NSArray *properties = @[ NSURLNameKey, NSURLIsDirectoryKey, NSURLFileSizeKey, NSURLPathKey ];
-        
+        NSArray *properties = @[NSURLNameKey, NSURLIsDirectoryKey, NSURLFileSizeKey, NSURLPathKey];
         NSDirectoryEnumerator *dirEnumerator = [[NSFileManager defaultManager] enumeratorAtURL:inputDirURL includingPropertiesForKeys:properties options:NSDirectoryEnumerationSkipsHiddenFiles errorHandler:nil];
-        
         scanForMovies(dirEnumerator);
     }
     return 0;
 }
 
+NSString *getInputPath(NSString *pathArg) {
+    BOOL isArgADir;
+    if (pathArg != nil && [[NSFileManager defaultManager] fileExistsAtPath:pathArg isDirectory:&isArgADir] && isArgADir) {
+        return pathArg;
+    }
+    return [@"~/Desktop/test/" stringByExpandingTildeInPath];
+}
+
+NSString *getOutputPath(NSString *pathArg) {
+    BOOL isArgADir;
+    if (pathArg != nil && [[NSFileManager defaultManager] fileExistsAtPath:pathArg isDirectory:&isArgADir] && isArgADir) {
+        return pathArg;
+    }
+    return [@"~/Desktop/test/" stringByExpandingTildeInPath];
+}
+
 void scanForMovies(NSDirectoryEnumerator *files) {
     //  initialize static variables
-    NSArray *movieTypes = @[ @"avi", @"ts", @"divx", @"mpg", @"mpeg", @"flv", @"mkv" ];
+    NSArray *movieTypes = @[@"avi", @"ts", @"divx", @"mpg", @"mpeg", @"flv", @"mkv"];
     movies = [[NSMutableArray alloc] init];
     for(NSURL *file in files) {
         NSNumber *isDirectory;
@@ -67,7 +64,7 @@ void scanForMovies(NSDirectoryEnumerator *files) {
         if(!isDirectory.boolValue) {
             NSString *path;
             [file getResourceValue:&path forKey:NSURLPathKey error:NULL];
-            writeToLog( [NSString stringWithFormat:@"Scanning path '%@'", path] );
+            writeToLog([NSString stringWithFormat:@"Scanning path '%@'", path]);
             NSString *filename = [path lastPathComponent];
             NSString *extension = [[filename pathExtension] lowercaseString];
             if ([movieTypes containsObject:extension] && ![filename.lowercaseString hasPrefix:@"sample"]) {
@@ -76,13 +73,14 @@ void scanForMovies(NSDirectoryEnumerator *files) {
         }
     }
     //  view results
-    if(movies.count > 0) {
+    if (movies.count) {
         writeToLog([NSString stringWithFormat:@"Found %ld movies!", movies.count]);
         for(int i = 1; i <= MAX_CONCURRENT_CONVERSIONS; i++) {
             processMovieInBackground();
         }
     } else {
-        writeToLog( @"Didn't find nothin." );
+        writeToLog( @"Didn't find nothin.");
+        [logger writeLog];
     }
 }
 
@@ -97,7 +95,6 @@ void processMovieInBackground(void) {
             NSString *filename = [[[moviePath lastPathComponent] stringByDeletingPathExtension] stringByAppendingString:@".m4v"];
             NSString *outputPath = [outputDir stringByAppendingPathComponent:filename];
             writeToLog([NSString stringWithFormat:@"Starting to convert %@", moviePath]);
-            
             NSString *command = [NSString stringWithFormat:@"handbrake -i \"%@\" -o \"%@\" --preset=\"AppleTV 3\"", moviePath, outputPath];
             system([command cStringUsingEncoding:NSUTF8StringEncoding]);
             writeToLog([NSString stringWithFormat:@"CONVERSION COMPLETED FOR %d/%d '%@'", currentMovieIndex, (int) movies.count, moviePath]);
@@ -119,14 +116,12 @@ void processMovieInBackground(void) {
             concurrentCount--;
             processMovieInBackground();
         });
-    }
-    else
-    {
+    } else {
         writeToLog(@"No more movies to convert. Resting up.");
-        if (concurrentCount == 0) {
+        if (!concurrentCount) {
             writeToLog(@"All jobs reported as completed.");
             writeToLog(@"Terminating application");
-            [logFile closeFile];
+            [logger writeLog];
         }
     }
 }
@@ -162,12 +157,8 @@ void deleteSourceMovie(NSString *sourcePath) {
 }
 
 void writeToLog(NSString *message) {
-    NSLog(@"%@", message);
-    if (writingToLog) {
-        //writeToLog(message);
-    } else {
-        writingToLog = YES;
-        [logFile writeData:[[message stringByAppendingString:@"\n"] dataUsingEncoding:NSUTF8StringEncoding]];
-        writingToLog = NO;
+    if (!logger) {
+        logger = [[Logger alloc] init];
     }
+    [logger log:message];
 }
